@@ -143,18 +143,57 @@ async function run() {
 			res.send(result);
 		});
 
+		app.post("/products/:productId/comments", async (req, res) => {
+			const productId = req.params.productId;
+			const comment = req.body;
+
+			const product = await productsCollection.findOne({ _id: new ObjectId(productId) });
+			if (!product) {
+				return res.status(404).send({ message: "Product not found" });
+			}
+
+			comment.createdAt = new Date();
+
+			const result = await productsCollection.updateOne(
+				{ _id: new ObjectId(productId) },
+				{ $push: { comments: comment } },
+				{ upsert: true }
+			);
+
+			res.send(result);
+		});
+
+		// app.get("/products/featured", async (req, res) => {
+		// 	const result = await productsCollection.find().toArray();
+		// 	res.send(result);
+		// });
+
+		app.get("/products/featured", async (req, res) => {
+			const result = await productsCollection.find({ feature: true }).toArray();
+			res.send(result);
+		});
+
 		app.get("/products", async (req, res) => {
-			const result = await productsCollection.find().toArray();
+			const result = await productsCollection
+				.find(
+					{},
+					{
+						projection: {
+							_id: 1,
+							productImages: { $slice: 1 },
+							productName: 1,
+							price: 1,
+						},
+					}
+				)
+				.toArray();
 			res.send(result);
 		});
 
 		app.get("/products/category/:category", async (req, res) => {
 			try {
 				const { category } = req.params;
-				console.log("category: ", category);
-
-				const categoryFields = ["accessCat", "seasonCat", "genderCat", "brandCat"];
-				console.log("categoryFields: ", categoryFields);
+				const categoryFields = ["accessCat", "seasonCat", "genderCat"];
 
 				const trimmedCategory = category.trim();
 				const trimmedCategoryFields = categoryFields.map((field) => field.trim());
@@ -163,11 +202,22 @@ async function run() {
 					[field]: { $regex: new RegExp(`^${trimmedCategory}$`, "i") },
 				}));
 
-				const result = await productsCollection.find({ $or: orQuery }).toArray();
-				console.log("result: ", result);
+				const result = await productsCollection
+					.find(
+						{ $or: orQuery },
+						{
+							projection: {
+								_id: 1,
+								productImages: { $slice: 1 },
+								productName: 1,
+								price: 1,
+							},
+						}
+					)
+					.toArray();
+				// const result = await productsCollection.find({ $or: orQuery }).toArray();
 				res.send(result);
 			} catch (error) {
-				console.error("Error fetching products:", error);
 				res.status(500).send("Internal Server Error");
 			}
 		});
