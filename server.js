@@ -215,7 +215,6 @@ async function run() {
 						}
 					)
 					.toArray();
-				// const result = await productsCollection.find({ $or: orQuery }).toArray();
 				res.send(result);
 			} catch (error) {
 				res.status(500).send("Internal Server Error");
